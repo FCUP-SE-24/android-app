@@ -89,4 +89,5 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: "build/app/outputs/apk/release/*"
+          tag: frontend-testing
           token: ${{ secrets.TOKEN }}
