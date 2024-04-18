@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -18,7 +19,9 @@ import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
@@ -28,6 +31,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 import org.w3c.dom.Text;
+
+import java.util.Objects;
 
 import pt.up.fc.se.petfeeder.databinding.ActivityMainBinding;
 import pt.up.fc.se.petfeeder.databinding.ActivityUserBinding;
@@ -55,8 +60,6 @@ public class UserActivity extends AppCompatActivity {
         firebaseAuth = FirebaseAuth.getInstance();
         user = firebaseAuth.getCurrentUser();
 
-        // TODO: show user email on pop up menu
-
         if(user == null) {
             Intent I = new Intent(getApplicationContext(), MainActivity.class);
             startActivity(I);
@@ -67,11 +70,15 @@ public class UserActivity extends AppCompatActivity {
         menuBuilder = new MenuBuilder(this);
         MenuInflater menuInflater = new MenuInflater(this);
         menuInflater.inflate(R.menu.user_menu, menuBuilder);
+        String userEmail = Objects.requireNonNull(user.getEmail()).substring(0, user.getEmail().indexOf("@"));
+        menuBuilder.getItem(0).setTitle(userEmail);
         menu_user_show.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 MenuPopupHelper menuPopupHelper = new MenuPopupHelper(UserActivity.this, menuBuilder, v);
                 menuPopupHelper.setForceShowIcon(true);
+
+                menuBuilder.getItem(0).setEnabled(false);
                 menuBuilder.setCallback(new MenuBuilder.Callback() {
                     @Override
                     public boolean onMenuItemSelected(@NonNull MenuBuilder menu, @NonNull MenuItem item) {
