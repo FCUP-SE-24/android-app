@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">PetFeeder</string>
+    <string name="app_title">Pet Feeder</string>
+    <string name="app_logo_description">Pet Feeder\'s Logo</string>
+
+    <string name="hint_email">Email</string>
+    <string name="hint_password">Password</string>
+    <string name="hint_confirm_password">Confirm Password</string>
+    <string name="label_has_account">Already have an account?</string>
+    <string name="label_no_account">Don\'t have an account?</string>
+    <string name="btn_login">Login</string>
+    <string name="btn_register">Create Account</string>
+
+    <string name="label_feeding_warning">You have reached 75% of the daily goal!</string>
+    <string name="label_last_feeding">Last Feeding:</string>
+    <string name="btn_feed">Feed</string>
+    <string name="label_title_bowls_page">Your Bowls</string>
+    <string name="btn_add_bowl">Add Bowl</string>
+    <string name="btn_reset_bowl">Reset Bowl</string>
+
+    <string name="dialog_title_add_bowl">Add new bowl</string>
+    <string name="dialog_hint_pet_name">Pet Name</string>
+    <string name="dialog_hint_daily_goal">Daily Goal</string>
+    <string name="dialog_action_add_bowl">Add</string>
+    <string name="dialog_msg_reset_bowl_confirmation">Are you sure you want to reset the bowl weight?</string>
+    <string name="dialog_action_reset_bowl">Reset</string>
+    <string name="dialog_title_update_daily_goal">Change daily goal</string>
+    <string name="dialog_msg_current_daily_goal">Current:</string>
+    <string name="dialog_action_update_daily_goal">Update</string>
+    
+    <string name="popup_logout">Logout</string>
+
+    <string name="menu_bowls">Bowls</string>
+    <string name="menu_feeding">Feeding</string>
+
+    <string name="image_description_user">User icon</string>
+</resources>

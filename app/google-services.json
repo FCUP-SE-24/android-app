@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "367635844919",
+    "project_id": "petfeeder-15520",
+    "storage_bucket": "petfeeder-15520.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:367635844919:android:552168d43ee9afdec914b2",
+        "android_client_info": {
+          "package_name": "pt.up.fc.se.petfeeder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5Ip_E7rreGzmjU8YqhhoEkLQGIr1gS8w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,17 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.PetFeeder" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your dark theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/startColor</item>
+        <item name="colorPrimaryDark">@color/endColor</item>
+    </style>
+
+    <style name="Theme.PetFeeder" parent="Base.Theme.PetFeeder" />
+    <style name="Theme.PetFeeder.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+<!--    <style name="Theme.PetFeeder.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />-->
+<!--    <style name="Theme.PetFeeder.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />-->
+</resources>
