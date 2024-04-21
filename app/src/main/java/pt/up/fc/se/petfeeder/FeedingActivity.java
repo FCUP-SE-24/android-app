@@ -1,13 +1,9 @@
 package pt.up.fc.se.petfeeder;
 
-import android.annotation.SuppressLint;
 import android.app.Dialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
-
-import androidx.fragment.app.Fragment;
-
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -15,33 +11,47 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import org.w3c.dom.Text;
+import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import java.util.Objects;
 
-public class FeedingFragment extends Fragment {
+public class FeedingActivity extends AppCompatActivity {
 
-    View view;
     TextView btnChangeDailyGoal;
+    TextView txtBack;
     Button btnFeed;
     Button btnResetBowl;
 
-    @SuppressLint("WrongViewCast")
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        view = inflater.inflate(R.layout.fragment_feeding, container, false);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_feeding);
 
-        //TODO: if there is no selected bowl,
-        // show error message that a bowl needs to be selected
+        Bundle extra = getIntent().getExtras();
 
-        TextView petName = view.findViewById(R.id.text_pet_name);
+        //TODO: using extra, fetch from DB info about bowl
+
+        txtBack = findViewById(R.id.label_back);
+        txtBack.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent I = new Intent(FeedingActivity.this, UserActivity.class);
+                startActivity(I);
+            }
+        });
+
+        TextView txtPetName = findViewById(R.id.text_pet_name);
+        if(extra != null) txtPetName.setText(extra.getString("bowlName"));
+
+        TextView txtCurrentDosage = findViewById(R.id.text_current_dosage);
         //TODO: fetch this from DB
 
-        TextView currentDosage = view.findViewById(R.id.text_current_dosage);
-        //TODO: fetch this from DB
-
-        btnChangeDailyGoal = view.findViewById(R.id.text_update_goal_dialog);
+        btnChangeDailyGoal = findViewById(R.id.text_update_goal_dialog);
         //TODO: fetch value from DB
         btnChangeDailyGoal.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -50,11 +60,11 @@ public class FeedingFragment extends Fragment {
             }
         });
 
-        TextView lastFeeding = view.findViewById(R.id.text_last_feeding_time);
+        TextView txtLastFeeding = findViewById(R.id.text_last_feeding_time);
         //TODO: fetch this from DB
 
         //TODO: feeding action here
-        btnFeed = view.findViewById(R.id.button_feed);
+        btnFeed = findViewById(R.id.button_feed);
         btnFeed.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
@@ -63,7 +73,7 @@ public class FeedingFragment extends Fragment {
             }
         });
 
-        btnResetBowl = view.findViewById(R.id.button_reset_bowl_dialog);
+        btnResetBowl = findViewById(R.id.button_reset_bowl_dialog);
         btnResetBowl.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -71,11 +81,15 @@ public class FeedingFragment extends Fragment {
             }
         });
 
-        return view;
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
     }
 
     void showUpdateGoalDialog() {
-        final Dialog dialog = new Dialog(requireActivity());
+        final Dialog dialog = new Dialog(FeedingActivity.this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setCancelable(true);
         Objects.requireNonNull(dialog.getWindow()).getDecorView().setBackgroundColor(Color.TRANSPARENT);
@@ -100,7 +114,7 @@ public class FeedingFragment extends Fragment {
     }
 
     void showResetBowlDialog() {
-        final Dialog dialog = new Dialog(requireActivity());
+        final Dialog dialog = new Dialog(FeedingActivity.this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setCancelable(true);
         Objects.requireNonNull(dialog.getWindow()).getDecorView().setBackgroundColor(Color.TRANSPARENT);

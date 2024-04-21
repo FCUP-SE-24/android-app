@@ -16,6 +16,9 @@
     <string name="btn_feed">Feed</string>
     <string name="label_title_bowls_page">Your Bowls</string>
     <string name="btn_add_bowl">Add Bowl</string>
+    <string name="label_select_bowl">Select</string>
+    <string name="label_bar"> / </string>
+    <string name="label_back">Back</string>
     <string name="btn_reset_bowl">Reset Bowl</string>
 
     <string name="dialog_title_add_bowl">Add new bowl</string>
@@ -27,7 +30,7 @@
     <string name="dialog_title_update_daily_goal">Change daily goal</string>
     <string name="dialog_msg_current_daily_goal">Current:</string>
     <string name="dialog_action_update_daily_goal">Update</string>
-    
+
     <string name="popup_logout">Logout</string>
 
     <string name="menu_bowls">Bowls</string>

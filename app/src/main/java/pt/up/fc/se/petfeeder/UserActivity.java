@@ -1,15 +1,20 @@
 package pt.up.fc.se.petfeeder;
 
 import android.annotation.SuppressLint;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -32,6 +37,8 @@ import com.google.firebase.auth.FirebaseUser;
 
 import org.w3c.dom.Text;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Objects;
 
 import pt.up.fc.se.petfeeder.databinding.ActivityMainBinding;
@@ -39,26 +46,29 @@ import pt.up.fc.se.petfeeder.databinding.ActivityUserBinding;
 
 public class UserActivity extends AppCompatActivity {
 
-    ActivityUserBinding binding;
+    Button btnAddBowl;
+    LinearLayout layout;
     ImageView menu_user_show;
     @SuppressLint("RestrictedApi")
     MenuBuilder menuBuilder;
     FirebaseAuth firebaseAuth;
     FirebaseUser user;
     private FirebaseAuth.AuthStateListener authStateListener;
-    public int selectedBowl;
+
+    //Temporary
+    public List<String> bowls;
 
     @SuppressLint({"NonConstantResourceId", "RestrictedApi"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
-        binding = ActivityUserBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
-        replaceFragment(new BowlsFragment());
+        setContentView(R.layout.activity_user);
 
         firebaseAuth = FirebaseAuth.getInstance();
         user = firebaseAuth.getCurrentUser();
+
+        bowls = new LinkedList<String>();
 
         if(user == null) {
             Intent I = new Intent(getApplicationContext(), MainActivity.class);
@@ -101,16 +111,22 @@ public class UserActivity extends AppCompatActivity {
             }
         });
 
+        btnAddBowl = findViewById(R.id.button_add_bowl_dialog);
+        layout = findViewById(R.id.layout_container);
 
-        binding.bottomNavigationView.setOnItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if(id == R.id.bottom_navbar_menu_bowls) {
-                replaceFragment(new BowlsFragment());
-            } else if(id == R.id.bottom_navbar_menu_feeding) {
-                replaceFragment(new FeedingFragment());
+        //TODO: warning of how much bowls are free
+        // free bowls = arduinos without name
+        // if no more free bowls, disable button and warn
+        btnAddBowl.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showAddBowlDialog();
             }
-            return true;
         });
+
+        //TODO: get all bowls from DB
+        // for loop that uses the method addCard
+
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -133,10 +149,61 @@ public class UserActivity extends AppCompatActivity {
         }
     }
 
-    private void replaceFragment(Fragment fragment) {
-        FragmentManager fragmentManager = getSupportFragmentManager();
-        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        fragmentTransaction.replace(R.id.frame_layout, fragment);
-        fragmentTransaction.commit();
+    void showAddBowlDialog() {
+        final Dialog dialog = new Dialog(UserActivity.this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setCancelable(true);
+        Objects.requireNonNull(dialog.getWindow()).getDecorView().setBackgroundColor(Color.TRANSPARENT);
+        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        dialog.setContentView(R.layout.dialog_add_bowl);
+
+        //TODO: list with existent bowls names
+        // petName is unique
+        // or search in db if that petName already exists
+
+        final EditText txtAddPetName = dialog.findViewById(R.id.edittext_dialog_add_pet_name);
+        final EditText txtAddDailyGoal = dialog.findViewById(R.id.edittext_dialog_add_daily_goal);
+        Button btnAdd = dialog.findViewById(R.id.button_dialog_add_bowl);
+
+        btnAdd.setOnClickListener((v) -> {
+            String petName = txtAddPetName.getText().toString();
+            String dailyGoal = txtAddDailyGoal.getText().toString();
+
+            addCard(petName, dailyGoal);
+
+            //TODO: send this info to database
+            //TODO: get bowl weight and 'reset' it
+
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private void addCard(String petName, String dailyGoal) {
+        View cardView = getLayoutInflater().inflate(R.layout.card_bowl, null);
+
+        TextView txtBowlName = cardView.findViewById(R.id.text_bowl_name);
+        txtBowlName.setText(petName);
+
+        TextView txtCurrentDosage = cardView.findViewById(R.id.text_bowl_current_dosage);
+        //TODO: get value from DB?
+        txtCurrentDosage.setText("0");
+
+        TextView txtDailyGoal = cardView.findViewById(R.id.text_daily_goal);
+        txtDailyGoal.setText(dailyGoal);
+
+        Button btnSelect = cardView.findViewById(R.id.button_select_bowl);
+
+        btnSelect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent I = new Intent(UserActivity.this, FeedingActivity.class);
+                I.putExtra("bowlName", petName);
+                startActivity(I);
+            }
+        });
+
+        layout.addView(cardView);
     }
 }
