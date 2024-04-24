@@ -52,7 +52,8 @@
                         android:padding="10dp"
                         android:text="@string/label_title_bowls_page"
                         android:textAlignment="center"
-                        android:textSize="32sp" />
+                        android:textSize="32sp"
+                        android:autoSizeTextType="uniform"/>
 
                     <Button
                         android:id="@+id/button_add_bowl_dialog"
@@ -63,7 +64,7 @@
                         android:background="@drawable/button_background"
                         android:paddingHorizontal="20dp"
                         android:text="@string/btn_add_bowl"
-                        android:textColor="@color/white" />
+                        android:textColor="@color/white"/>
 
                     <!--TODO: fetch from DB-->
                     <!--TODO: dynamic list-->
