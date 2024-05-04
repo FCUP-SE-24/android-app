@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -25,25 +24,22 @@ import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import com.google.firebase.Firebase;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
-import java.io.IOException;
+import org.w3c.dom.Text;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
 import pt.up.fc.se.petfeeder.databinding.ActivityMainBinding;
 import pt.up.fc.se.petfeeder.databinding.ActivityUserBinding;
@@ -151,25 +147,6 @@ public class UserActivity extends AppCompatActivity {
             startActivity(I);
             finish();
         }
-
-        OkHttpClient client = new OkHttpClient();
-        String url = "http://46.101.71.117:5000/get_bowls_list";
-
-        Request request = new Request.Builder().url(url).build();
-        Call call = client.newCall(request);
-        call.enqueue(new Callback() {
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                assert response.body() != null;
-                String responseBody = response.body().string();
-                System.out.println(responseBody);
-                Log.d("RESPONSE RECEIVED", responseBody);
-            }
-
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                System.out.println("FAILURE");
-                e.printStackTrace();
-            }
-        });
     }
 
     void showAddBowlDialog() {
