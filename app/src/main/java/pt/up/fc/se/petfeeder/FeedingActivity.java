@@ -1,5 +1,6 @@
 package pt.up.fc.se.petfeeder;
 
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Color;
@@ -18,6 +19,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.util.Objects;
+import java.util.concurrent.BlockingQueue;
 
 public class FeedingActivity extends AppCompatActivity {
 
@@ -25,7 +27,9 @@ public class FeedingActivity extends AppCompatActivity {
     TextView txtBack;
     Button btnFeed;
     Button btnResetBowl;
+    ServerRequests requests;
 
+    @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -34,7 +38,12 @@ public class FeedingActivity extends AppCompatActivity {
 
         Bundle extra = getIntent().getExtras();
 
-        //TODO: using extra, fetch from DB info about bowl
+        assert extra != null;
+        String petName = extra.getString("bowlName");
+
+        requests = new ServerRequests();
+
+        BlockingQueue<Integer> blockingQueue;
 
         txtBack = findViewById(R.id.label_back);
         txtBack.setOnClickListener(new View.OnClickListener() {
@@ -46,17 +55,29 @@ public class FeedingActivity extends AppCompatActivity {
         });
 
         TextView txtPetName = findViewById(R.id.text_pet_name);
-        if(extra != null) txtPetName.setText(extra.getString("bowlName"));
+        txtPetName.setText(petName);
 
+        blockingQueue = requests.getFoodAmount(petName);
         TextView txtCurrentDosage = findViewById(R.id.text_current_dosage);
-        //TODO: fetch this from DB
+        try {
+            txtCurrentDosage.setText(blockingQueue.take().toString());
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 
+        // TODO
+        //blockingQueue = requests.getDailyGoal(petName);
         btnChangeDailyGoal = findViewById(R.id.text_update_goal_dialog);
-        //TODO: fetch value from DB
+//        try {
+//            btnChangeDailyGoal.setText(blockingQueue.take().toString());
+//        } catch (InterruptedException e) {
+//            throw new RuntimeException(e);
+//        }
+
         btnChangeDailyGoal.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                showUpdateGoalDialog();
+                showUpdateGoalDialog(petName);
             }
         });
 
@@ -88,7 +109,8 @@ public class FeedingActivity extends AppCompatActivity {
         });
     }
 
-    void showUpdateGoalDialog() {
+    @SuppressLint("SetTextI18n")
+    void showUpdateGoalDialog(String petName) {
         final Dialog dialog = new Dialog(FeedingActivity.this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setCancelable(true);
@@ -96,8 +118,13 @@ public class FeedingActivity extends AppCompatActivity {
         dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         dialog.setContentView(R.layout.dialog_daily_goal);
 
-        TextView currentGoal = dialog.findViewById(R.id.text_dialog_current_goal);
-        //TODO: fetch from DB this value
+        //BlockingQueue<Integer> blockingQueue = requests.getDailyGoal(petName);
+        TextView txtCurrentGoal = dialog.findViewById(R.id.text_dialog_current_goal);
+//        try {
+//            txtCurrentGoal.setText(blockingQueue.take().toString());
+//        } catch (InterruptedException e) {
+//            throw new RuntimeException(e);
+//        }
 
         final EditText txtDailyGoal = dialog.findViewById(R.id.edittext_dialog_update_daily_goal);
         Button btnUpdate = dialog.findViewById(R.id.button_dialog_update_daily_goal);
@@ -105,7 +132,7 @@ public class FeedingActivity extends AppCompatActivity {
         btnUpdate.setOnClickListener((v) -> {
             String dailyGoal = txtDailyGoal.getText().toString();
 
-            //TODO: send this info to database
+            requests.postDailyGoal(petName, dailyGoal);
 
             dialog.dismiss();
         });

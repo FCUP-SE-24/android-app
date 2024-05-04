@@ -35,12 +35,23 @@ import com.google.firebase.Firebase;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.w3c.dom.Text;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.BlockingQueue;
 
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import pt.up.fc.se.petfeeder.databinding.ActivityMainBinding;
 import pt.up.fc.se.petfeeder.databinding.ActivityUserBinding;
 
@@ -54,9 +65,9 @@ public class UserActivity extends AppCompatActivity {
     FirebaseAuth firebaseAuth;
     FirebaseUser user;
     private FirebaseAuth.AuthStateListener authStateListener;
-
-    //Temporary
-    public List<String> bowls;
+    ServerRequests requests;
+    int nAvailableBowls;
+    JSONArray bowlsArray;
 
     @SuppressLint({"NonConstantResourceId", "RestrictedApi"})
     @Override
@@ -66,9 +77,13 @@ public class UserActivity extends AppCompatActivity {
         setContentView(R.layout.activity_user);
 
         firebaseAuth = FirebaseAuth.getInstance();
+
+        requests = new ServerRequests();
+
+        nAvailableBowls = 0;
+
         user = firebaseAuth.getCurrentUser();
 
-        bowls = new LinkedList<String>();
 
         if(user == null) {
             Intent I = new Intent(getApplicationContext(), MainActivity.class);
@@ -114,9 +129,6 @@ public class UserActivity extends AppCompatActivity {
         btnAddBowl = findViewById(R.id.button_add_bowl_dialog);
         layout = findViewById(R.id.layout_container);
 
-        //TODO: warning of how much bowls are free
-        // free bowls = arduinos without name
-        // if no more free bowls, disable button and warn
         btnAddBowl.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -124,9 +136,21 @@ public class UserActivity extends AppCompatActivity {
             }
         });
 
-        //TODO: get all bowls from DB
-        // for loop that uses the method addCard
+        BlockingQueue<JSONArray> blockingQueue = requests.getBowlsList();
+        try {
+            bowlsArray = blockingQueue.take();
+            for (int i = 0; i < bowlsArray.length(); i++) {
+                if(bowlsArray.getString(i).contains("undefined"))
+                    nAvailableBowls += 1;
+                else addCard(bowlsArray.getString(i));
+            }
+        } catch (InterruptedException | JSONException e) {
+            throw new RuntimeException(e);
+        }
 
+        //TODO: warning of how much bowls are free
+        // free bowls = arduinos without name
+        // if no more free bowls, disable button and warn
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -169,9 +193,17 @@ public class UserActivity extends AppCompatActivity {
             String petName = txtAddPetName.getText().toString();
             String dailyGoal = txtAddDailyGoal.getText().toString();
 
-            addCard(petName, dailyGoal);
+            //TODO: request may execute out of order BIG PROBLEM
+            // postAddBowl needs to receive dailyGoal
+            requests.postAddBowl(petName);
+            requests.postDailyGoal(petName, dailyGoal);
 
-            //TODO: send this info to database
+            try {
+                addCard(petName);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
             //TODO: get bowl weight and 'reset' it
 
             dialog.dismiss();
@@ -180,18 +212,23 @@ public class UserActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    private void addCard(String petName, String dailyGoal) {
+    @SuppressLint("SetTextI18n")
+    private void addCard(String petName) throws InterruptedException {
         View cardView = getLayoutInflater().inflate(R.layout.card_bowl, null);
+        BlockingQueue<Integer> blockingQueue;
 
         TextView txtBowlName = cardView.findViewById(R.id.text_bowl_name);
         txtBowlName.setText(petName);
 
+        blockingQueue = requests.getFoodAmount(petName);
         TextView txtCurrentDosage = cardView.findViewById(R.id.text_bowl_current_dosage);
-        //TODO: get value from DB?
-        txtCurrentDosage.setText("0");
+        txtCurrentDosage.setText(blockingQueue.take().toString());
 
+        // TODO
+        //blockingQueue = requests.getDailyGoal(petName);
         TextView txtDailyGoal = cardView.findViewById(R.id.text_daily_goal);
-        txtDailyGoal.setText(dailyGoal);
+        //txtDailyGoal.setText(blockingQueue.take().toString());
+        txtDailyGoal.setText("250");
 
         Button btnSelect = cardView.findViewById(R.id.button_select_bowl);
 
