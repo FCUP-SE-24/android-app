@@ -132,9 +132,13 @@ public class FeedingActivity extends AppCompatActivity {
         btnUpdate.setOnClickListener((v) -> {
             String dailyGoal = txtDailyGoal.getText().toString();
 
-            requests.postDailyGoal(petName, dailyGoal);
-
-            dialog.dismiss();
+            if(dailyGoal.isEmpty()) {
+                txtDailyGoal.setError("Please insert a valid number");
+                txtDailyGoal.requestFocus();
+            } else {
+                requests.postDailyGoal(petName, dailyGoal);
+                dialog.dismiss();
+            }
         });
 
         dialog.show();

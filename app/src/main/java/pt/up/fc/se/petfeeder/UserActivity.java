@@ -181,10 +181,6 @@ public class UserActivity extends AppCompatActivity {
         dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         dialog.setContentView(R.layout.dialog_add_bowl);
 
-        //TODO: list with existent bowls names
-        // petName is unique
-        // or search in db if that petName already exists
-
         final EditText txtAddPetName = dialog.findViewById(R.id.edittext_dialog_add_pet_name);
         final EditText txtAddDailyGoal = dialog.findViewById(R.id.edittext_dialog_add_daily_goal);
         Button btnAdd = dialog.findViewById(R.id.button_dialog_add_bowl);
@@ -193,20 +189,43 @@ public class UserActivity extends AppCompatActivity {
             String petName = txtAddPetName.getText().toString();
             String dailyGoal = txtAddDailyGoal.getText().toString();
 
-            //TODO: request may execute out of order BIG PROBLEM
-            // postAddBowl needs to receive dailyGoal
-            requests.postAddBowl(petName);
-            requests.postDailyGoal(petName, dailyGoal);
+            //TODO: check if this works
+            if(petName.isBlank()) {
+                txtAddPetName.setError("Please insert a valid name");
+                txtAddPetName.requestFocus();
+            } else if(dailyGoal.isEmpty()) {
+                txtAddDailyGoal.setError("Please insert a valid number");
+                txtAddDailyGoal.requestFocus();
+            } else {
+                String error = "";
+                for (int i = 0; i < this.bowlsArray.length(); i++) {
+                try {
+                    if(bowlsArray.getString(i).equals(petName)) error = "This name it's already in use";
+                    if(bowlsArray.getString(i).contains("undefined")) error = "Please insert a valid name: (undefined) is not valid!";
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+              }
 
-            try {
-                addCard(petName);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                if(error.isEmpty()) {
+                    requests.postAddBowl(petName);
+                    requests.postDailyGoal(petName, dailyGoal);
+                    try {
+                        addCard(petName);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    dialog.dismiss();
+                } else {
+                    txtAddPetName.setError(error);
+                    txtAddPetName.requestFocus();
+                }
             }
 
-            //TODO: get bowl weight and 'reset' it
+            //TODO: request may execute out of order BIG PROBLEM
+            // postAddBowl needs to receive dailyGoal
 
-            dialog.dismiss();
+            //TODO: get bowl weight and 'reset' it
         });
 
         dialog.show();
@@ -225,9 +244,9 @@ public class UserActivity extends AppCompatActivity {
         txtCurrentDosage.setText(blockingQueue.take().toString());
 
         // TODO
-        //blockingQueue = requests.getDailyGoal(petName);
+        blockingQueue = requests.getDailyGoal(petName);
         TextView txtDailyGoal = cardView.findViewById(R.id.text_daily_goal);
-        //txtDailyGoal.setText(blockingQueue.take().toString());
+        txtDailyGoal.setText(blockingQueue.take().toString());
         txtDailyGoal.setText("250");
 
         Button btnSelect = cardView.findViewById(R.id.button_select_bowl);
