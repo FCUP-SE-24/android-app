@@ -18,6 +18,8 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 
@@ -81,8 +83,13 @@ public class FeedingActivity extends AppCompatActivity {
             }
         });
 
+        BlockingQueue<LocalTime> localTimeBlockingQueue = requests.getLastFeedingTime(petName);
         TextView txtLastFeeding = findViewById(R.id.text_last_feeding_time);
-        //TODO: fetch this from DB
+        try {
+            txtLastFeeding.setText(localTimeBlockingQueue.take().format(DateTimeFormatter.ISO_LOCAL_DATE));
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 
         //TODO: feeding action here
         btnFeed = findViewById(R.id.button_feed);
@@ -90,10 +97,15 @@ public class FeedingActivity extends AppCompatActivity {
             @Override
             public boolean onLongClick(View v) {
                 //TODO: update current dosage and last feeding time
-                return false;
+                while(true) {
+                    // get weight from the scale
+                    // get feeding time
+                    // update last feeding time?
+                }
             }
         });
 
+        //TODO: reset scale request
         btnResetBowl = findViewById(R.id.button_reset_bowl_dialog);
         btnResetBowl.setOnClickListener(new View.OnClickListener() {
             @Override

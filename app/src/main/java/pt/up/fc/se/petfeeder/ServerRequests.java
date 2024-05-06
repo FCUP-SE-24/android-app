@@ -10,6 +10,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.time.LocalTime;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -89,7 +90,7 @@ public class ServerRequests {
         return blockingQueue;
     }
 
-    // TODO: add this request to server
+    //TODO: check if this works
     public BlockingQueue<Integer> getDailyGoal(String bowlName) {
         // TODO: send bowlName to server as param
         String dailyGoalUrl = base_url + "/get_daily_goal";
@@ -108,6 +109,40 @@ public class ServerRequests {
                     responseBody = new JSONObject(responseString);
                     int dailyGoal = responseBody.getInt("daily_goal");
                     blockingQueue.add(dailyGoal);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+        return blockingQueue;
+    }
+
+    //TODO: check if this works
+    public BlockingQueue<LocalTime> getLastFeedingTime(String bowlName) {
+        // TODO: send bowlName to server as param
+        String lastFeedingUrl = base_url + "/get_last_feeding_time";
+        Request bowlsListRequest = new Request.Builder().url(lastFeedingUrl).build();
+
+        final BlockingQueue<LocalTime> blockingQueue = new ArrayBlockingQueue<>(1);
+
+        Call call = client.newCall(bowlsListRequest);
+        call.enqueue(new Callback() {
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                assert response.body() != null;
+                String responseString = response.body().string();
+                JSONObject responseBody = null;
+                try {
+                    responseBody = new JSONObject(responseString);
+                    String lastFeedingTime = responseBody.getString("last_feeding_time");
+                    LocalTime time = LocalTime.parse(lastFeedingTime);
+                    blockingQueue.add(time);
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
