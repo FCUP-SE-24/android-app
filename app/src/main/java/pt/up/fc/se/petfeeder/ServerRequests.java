@@ -11,11 +11,14 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.time.LocalTime;
+import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.FormBody;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -29,11 +32,11 @@ public class ServerRequests {
     // -- GETS --
     public BlockingQueue<JSONArray> getBowlsList() {
         String bowlsListUrl = base_url + "/get_bowls_list";
-        Request bowlsListRequest = new Request.Builder().url(bowlsListUrl).build();
+        Request request = new Request.Builder().url(bowlsListUrl).build();
 
         final BlockingQueue<JSONArray> blockingQueue = new ArrayBlockingQueue<>(1);
 
-        Call call = client.newCall(bowlsListRequest);
+        Call call = client.newCall(request);
         call.enqueue(new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
@@ -58,14 +61,17 @@ public class ServerRequests {
         return blockingQueue;
     }
 
+    // current dosage
     public BlockingQueue<Integer> getFoodAmount(String bowlName) {
-        // TODO: send bowlName to server as param
-        String foodAmountUrl = base_url + "/get_food_amount";
-        Request bowlsListRequest = new Request.Builder().url(foodAmountUrl).build();
+        HttpUrl.Builder urlBuilder = Objects.requireNonNull(HttpUrl.parse(base_url + "/get_food_amount")).newBuilder();
+        urlBuilder.addQueryParameter("bowl_name", bowlName);
+        String foodAmountUrl = urlBuilder.build().toString();
+
+        Request request = new Request.Builder().url(foodAmountUrl).build();
 
         final BlockingQueue<Integer> blockingQueue = new ArrayBlockingQueue<>(1);
 
-        Call call = client.newCall(bowlsListRequest);
+        Call call = client.newCall(request);
         call.enqueue(new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
@@ -90,15 +96,15 @@ public class ServerRequests {
         return blockingQueue;
     }
 
-    //TODO: check if this works
     public BlockingQueue<Integer> getDailyGoal(String bowlName) {
-        // TODO: send bowlName to server as param
-        String dailyGoalUrl = base_url + "/get_daily_goal";
-        Request bowlsListRequest = new Request.Builder().url(dailyGoalUrl).build();
+        HttpUrl.Builder urlBuilder = Objects.requireNonNull(HttpUrl.parse(base_url + "/get_daily_goal")).newBuilder();
+        urlBuilder.addQueryParameter("bowl_name", bowlName);
+        String dailyGoalUrl = urlBuilder.build().toString();
+        Request request = new Request.Builder().url(dailyGoalUrl).build();
 
         final BlockingQueue<Integer> blockingQueue = new ArrayBlockingQueue<>(1);
 
-        Call call = client.newCall(bowlsListRequest);
+        Call call = client.newCall(request);
         call.enqueue(new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
@@ -123,15 +129,15 @@ public class ServerRequests {
         return blockingQueue;
     }
 
-    //TODO: check if this works
-    public BlockingQueue<LocalTime> getLastFeedingTime(String bowlName) {
-        // TODO: send bowlName to server as param
-        String lastFeedingUrl = base_url + "/get_last_feeding_time";
-        Request bowlsListRequest = new Request.Builder().url(lastFeedingUrl).build();
+    public BlockingQueue<String> getLastFeedingTime(String bowlName) {
+        HttpUrl.Builder urlBuilder = Objects.requireNonNull(HttpUrl.parse(base_url + "/get_last_feeding_time")).newBuilder();
+        urlBuilder.addQueryParameter("bowl_name", bowlName);
+        String lastFeedingUrl = urlBuilder.build().toString();
+        Request request = new Request.Builder().url(lastFeedingUrl).build();
 
-        final BlockingQueue<LocalTime> blockingQueue = new ArrayBlockingQueue<>(1);
+        final BlockingQueue<String> blockingQueue = new ArrayBlockingQueue<>(1);
 
-        Call call = client.newCall(bowlsListRequest);
+        Call call = client.newCall(request);
         call.enqueue(new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
@@ -141,8 +147,40 @@ public class ServerRequests {
                 try {
                     responseBody = new JSONObject(responseString);
                     String lastFeedingTime = responseBody.getString("last_feeding_time");
-                    LocalTime time = LocalTime.parse(lastFeedingTime);
-                    blockingQueue.add(time);
+                    blockingQueue.add(lastFeedingTime);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+        return blockingQueue;
+    }
+
+    public BlockingQueue<Integer> getFoodPoured(String bowlName) {
+        HttpUrl.Builder urlBuilder = Objects.requireNonNull(HttpUrl.parse(base_url + "/get_weight")).newBuilder();
+        urlBuilder.addQueryParameter("bowl_name", bowlName);
+        String weightUrl = urlBuilder.build().toString();
+        Request request = new Request.Builder().url(weightUrl).build();
+
+        final BlockingQueue<Integer> blockingQueue = new ArrayBlockingQueue<>(1);
+
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                assert response.body() != null;
+                String responseString = response.body().string();
+                JSONObject responseBody = null;
+                try {
+                    responseBody = new JSONObject(responseString);
+                    int weight = responseBody.getInt("weight");
+                    blockingQueue.add(weight);
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
@@ -159,14 +197,13 @@ public class ServerRequests {
 
     // -- POSTS --
 
-    public void postAddBowl(String bowlName) {
+    public void postAddBowl(String bowlName, String dailyGoal) {
         String addBowlUrl = base_url + "/add_bowl";
-        String postBody = "{\n" +
-                "   \"bowl_name\": \"" + bowlName + "\"\n" +
-                "}";
-        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-        RequestBody body = RequestBody.create(JSON, postBody);
-        Request request = new Request.Builder().url(addBowlUrl).post(body).build();
+        RequestBody formBody = new FormBody.Builder()
+                .add("bowl_name", bowlName)
+                .add("daily_goal", dailyGoal)
+                .build();
+        Request request = new Request.Builder().url(addBowlUrl).post(formBody).build();
 
         Call call = client.newCall(request);
         call.enqueue(new Callback() {
@@ -184,16 +221,86 @@ public class ServerRequests {
         });
     }
 
-
     public void postDailyGoal(String bowlName, String dailyGoal) {
-        String addBowlUrl = base_url + "/set_daily_goal";
-        String postBody = "{\n" +
-                "   \"bowl_name\": \"" + bowlName + "\",\n" +
-                "   \"daily_goal\": \"" + dailyGoal + "\"\n" +
-                "}";
-        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-        RequestBody body = RequestBody.create(JSON, postBody);
-        Request request = new Request.Builder().url(addBowlUrl).post(body).build();
+        String dailyGoalUrl = base_url + "/set_daily_goal";
+        RequestBody formBody = new FormBody.Builder()
+                .add("bowl_name", bowlName)
+                .add("daily_goal", dailyGoal)
+                .build();
+        Request request = new Request.Builder().url(dailyGoalUrl).post(formBody).build();
+
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                e.printStackTrace();
+                call.cancel();
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                assert response.body() != null;
+                Log.d("TAG", response.body().string());
+            }
+        });
+    }
+
+    public void postLastFeedingTime(String bowlName, String time) {
+        String feedingTimeUrl = base_url + "/set_feeding_time";
+        RequestBody formBody = new FormBody.Builder()
+                .add("bowl_name", bowlName)
+                .add("feeding_time", time)
+                .build();
+        Request request = new Request.Builder().url(feedingTimeUrl).post(formBody).build();
+
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                e.printStackTrace();
+                call.cancel();
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                assert response.body() != null;
+                Log.d("TAG", response.body().string());
+            }
+        });
+    }
+
+    // -- OTHER --
+
+    public void changeMotorState(String bowlName, String state) {
+        String motorStateUrl = base_url + "/control_motor";
+        RequestBody formBody = new FormBody.Builder()
+                .add("bowl_name", bowlName)
+                .add("activate_motor", state)
+                .build();
+        Request request = new Request.Builder().url(motorStateUrl).post(formBody).build();
+
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                e.printStackTrace();
+                call.cancel();
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                assert response.body() != null;
+                Log.d("TAG", response.body().string());
+            }
+        });
+    }
+
+    public void resetBowl(String bowlName) {
+        String resetBowlUrl = base_url + "/reset_bowl";
+        RequestBody formBody = new FormBody.Builder()
+                .add("bowl_name", bowlName)
+                .build();
+        Request request = new Request.Builder().url(resetBowlUrl).post(formBody).build();
 
         Call call = client.newCall(request);
         call.enqueue(new Callback() {

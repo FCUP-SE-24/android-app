@@ -5,6 +5,8 @@ import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -30,8 +32,9 @@ public class FeedingActivity extends AppCompatActivity {
     Button btnFeed;
     Button btnResetBowl;
     ServerRequests requests;
+    String bowlName;
 
-    @SuppressLint("SetTextI18n")
+    @SuppressLint({"SetTextI18n", "ClickableViewAccessibility"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -41,7 +44,7 @@ public class FeedingActivity extends AppCompatActivity {
         Bundle extra = getIntent().getExtras();
 
         assert extra != null;
-        String petName = extra.getString("bowlName");
+        bowlName = extra.getString("bowlName");
 
         requests = new ServerRequests();
 
@@ -57,9 +60,9 @@ public class FeedingActivity extends AppCompatActivity {
         });
 
         TextView txtPetName = findViewById(R.id.text_pet_name);
-        txtPetName.setText(petName);
+        txtPetName.setText(bowlName);
 
-        blockingQueue = requests.getFoodAmount(petName);
+        blockingQueue = requests.getFoodAmount(bowlName);
         TextView txtCurrentDosage = findViewById(R.id.text_current_dosage);
         try {
             txtCurrentDosage.setText(blockingQueue.take().toString());
@@ -67,45 +70,72 @@ public class FeedingActivity extends AppCompatActivity {
             throw new RuntimeException(e);
         }
 
-        // TODO
-        //blockingQueue = requests.getDailyGoal(petName);
+        blockingQueue = requests.getDailyGoal(bowlName);
         btnChangeDailyGoal = findViewById(R.id.text_update_goal_dialog);
-//        try {
-//            btnChangeDailyGoal.setText(blockingQueue.take().toString());
-//        } catch (InterruptedException e) {
-//            throw new RuntimeException(e);
-//        }
-
-        btnChangeDailyGoal.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showUpdateGoalDialog(petName);
-            }
-        });
-
-        BlockingQueue<LocalTime> localTimeBlockingQueue = requests.getLastFeedingTime(petName);
-        TextView txtLastFeeding = findViewById(R.id.text_last_feeding_time);
         try {
-            txtLastFeeding.setText(localTimeBlockingQueue.take().format(DateTimeFormatter.ISO_LOCAL_DATE));
+            btnChangeDailyGoal.setText(blockingQueue.take().toString());
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
 
-        //TODO: feeding action here
-        btnFeed = findViewById(R.id.button_feed);
-        btnFeed.setOnLongClickListener(new View.OnLongClickListener() {
+        btnChangeDailyGoal.setOnClickListener(new View.OnClickListener() {
             @Override
-            public boolean onLongClick(View v) {
-                //TODO: update current dosage and last feeding time
-                while(true) {
-                    // get weight from the scale
-                    // get feeding time
-                    // update last feeding time?
-                }
+            public void onClick(View v) {
+                showUpdateGoalDialog(bowlName);
             }
         });
 
-        //TODO: reset scale request
+        BlockingQueue<String> feedingTimeBlockingQueue = requests.getLastFeedingTime(bowlName);
+        TextView txtLastFeeding = findViewById(R.id.text_last_feeding_time);
+        try {
+            txtLastFeeding.setText(feedingTimeBlockingQueue.take());
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        btnFeed = findViewById(R.id.button_feed);
+        btnFeed.setOnTouchListener(new View.OnTouchListener() {
+            private Handler handler;
+
+            @Override public boolean onTouch(View v, MotionEvent event) {
+                switch(event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (handler != null) return true;
+                        requests.changeMotorState(bowlName, "on");
+                        handler = new Handler();
+                        handler.postDelayed(action, 200);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (handler == null) return true;
+                        handler.removeCallbacks(action);
+                        handler = null;
+                        requests.changeMotorState(bowlName, "off");
+                        break;
+                }
+                return false;
+            }
+
+            final Runnable action = new Runnable() {
+                @Override public void run() {
+                    BlockingQueue<Integer> weightBlockingQueue = requests.getFoodPoured(bowlName);
+                    BlockingQueue<Integer> currentBlockingQueue = requests.getFoodAmount(bowlName);
+                    try {
+                        int weight = weightBlockingQueue.take();
+                        int current = currentBlockingQueue.take();
+                        int total = weight + current;
+                        txtCurrentDosage.setText(Integer.toString(total));
+                        requests.postLastFeedingTime(bowlName, LocalTime.now().format(DateTimeFormatter.ofPattern("H:m")));
+                        txtLastFeeding.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("H:m")));
+                        System.out.println(weight+current);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    //TODO: post weight to db here?
+                    handler.postDelayed(this, 200);
+                }
+            };
+        });
+
         btnResetBowl = findViewById(R.id.button_reset_bowl_dialog);
         btnResetBowl.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -130,13 +160,13 @@ public class FeedingActivity extends AppCompatActivity {
         dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         dialog.setContentView(R.layout.dialog_daily_goal);
 
-        //BlockingQueue<Integer> blockingQueue = requests.getDailyGoal(petName);
+        BlockingQueue<Integer> blockingQueue = requests.getDailyGoal(petName);
         TextView txtCurrentGoal = dialog.findViewById(R.id.text_dialog_current_goal);
-//        try {
-//            txtCurrentGoal.setText(blockingQueue.take().toString());
-//        } catch (InterruptedException e) {
-//            throw new RuntimeException(e);
-//        }
+        try {
+            txtCurrentGoal.setText(blockingQueue.take().toString());
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 
         final EditText txtDailyGoal = dialog.findViewById(R.id.edittext_dialog_update_daily_goal);
         Button btnUpdate = dialog.findViewById(R.id.button_dialog_update_daily_goal);
@@ -168,7 +198,8 @@ public class FeedingActivity extends AppCompatActivity {
 
         btnReset.setOnClickListener((v) -> {
 
-            //TODO: process reset bowl request
+            //TODO: make user wait time
+            requests.resetBowl(bowlName);
 
             dialog.dismiss();
         });

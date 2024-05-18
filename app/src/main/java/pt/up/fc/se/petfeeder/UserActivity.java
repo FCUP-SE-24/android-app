@@ -199,17 +199,16 @@ public class UserActivity extends AppCompatActivity {
             } else {
                 String error = "";
                 for (int i = 0; i < this.bowlsArray.length(); i++) {
-                try {
-                    if(bowlsArray.getString(i).equals(petName)) error = "This name it's already in use";
-                    if(bowlsArray.getString(i).contains("undefined")) error = "Please insert a valid name: (undefined) is not valid!";
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
+                    try {
+                        if(bowlsArray.getString(i).equals(petName)) error = "This name it's already in use";
+                        if(bowlsArray.getString(i).contains("undefined")) error = "Please insert a valid name: (undefined) is not valid!";
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
-              }
 
                 if(error.isEmpty()) {
-                    requests.postAddBowl(petName);
-                    requests.postDailyGoal(petName, dailyGoal);
+                    requests.postAddBowl(petName, dailyGoal);
                     try {
                         addCard(petName);
                     } catch (InterruptedException e) {
@@ -222,10 +221,8 @@ public class UserActivity extends AppCompatActivity {
                 }
             }
 
-            //TODO: request may execute out of order BIG PROBLEM
-            // postAddBowl needs to receive dailyGoal
-
-            //TODO: get bowl weight and 'reset' it
+            //TODO: make user wait time
+            requests.resetBowl(petName);
         });
 
         dialog.show();
@@ -243,11 +240,9 @@ public class UserActivity extends AppCompatActivity {
         TextView txtCurrentDosage = cardView.findViewById(R.id.text_bowl_current_dosage);
         txtCurrentDosage.setText(blockingQueue.take().toString());
 
-        // TODO
         blockingQueue = requests.getDailyGoal(petName);
         TextView txtDailyGoal = cardView.findViewById(R.id.text_daily_goal);
         txtDailyGoal.setText(blockingQueue.take().toString());
-        txtDailyGoal.setText("250");
 
         Button btnSelect = cardView.findViewById(R.id.button_select_bowl);
 
