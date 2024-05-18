@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -25,26 +24,34 @@ import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import com.google.firebase.Firebase;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.w3c.dom.Text;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.BlockingQueue;
 
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-
 import pt.up.fc.se.petfeeder.databinding.ActivityMainBinding;
 import pt.up.fc.se.petfeeder.databinding.ActivityUserBinding;
 
@@ -58,9 +65,9 @@ public class UserActivity extends AppCompatActivity {
     FirebaseAuth firebaseAuth;
     FirebaseUser user;
     private FirebaseAuth.AuthStateListener authStateListener;
-
-    //Temporary
-    public List<String> bowls;
+    ServerRequests requests;
+    int nAvailableBowls;
+    JSONArray bowlsArray;
 
     @SuppressLint({"NonConstantResourceId", "RestrictedApi"})
     @Override
@@ -70,9 +77,13 @@ public class UserActivity extends AppCompatActivity {
         setContentView(R.layout.activity_user);
 
         firebaseAuth = FirebaseAuth.getInstance();
+
+        requests = new ServerRequests();
+
+        nAvailableBowls = 0;
+
         user = firebaseAuth.getCurrentUser();
 
-        bowls = new LinkedList<String>();
 
         if(user == null) {
             Intent I = new Intent(getApplicationContext(), MainActivity.class);
@@ -118,9 +129,6 @@ public class UserActivity extends AppCompatActivity {
         btnAddBowl = findViewById(R.id.button_add_bowl_dialog);
         layout = findViewById(R.id.layout_container);
 
-        //TODO: warning of how much bowls are free
-        // free bowls = arduinos without name
-        // if no more free bowls, disable button and warn
         btnAddBowl.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -128,9 +136,21 @@ public class UserActivity extends AppCompatActivity {
             }
         });
 
-        //TODO: get all bowls from DB
-        // for loop that uses the method addCard
+        BlockingQueue<JSONArray> blockingQueue = requests.getBowlsList();
+        try {
+            bowlsArray = blockingQueue.take();
+            for (int i = 0; i < bowlsArray.length(); i++) {
+                if(bowlsArray.getString(i).contains("undefined"))
+                    nAvailableBowls += 1;
+                else addCard(bowlsArray.getString(i));
+            }
+        } catch (InterruptedException | JSONException e) {
+            throw new RuntimeException(e);
+        }
 
+        //TODO: warning of how much bowls are free
+        // free bowls = arduinos without name
+        // if no more free bowls, disable button and warn
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -151,25 +171,6 @@ public class UserActivity extends AppCompatActivity {
             startActivity(I);
             finish();
         }
-
-        OkHttpClient client = new OkHttpClient();
-        String url = "http://46.101.71.117:5000/get_bowls_list";
-
-        Request request = new Request.Builder().url(url).build();
-        Call call = client.newCall(request);
-        call.enqueue(new Callback() {
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                assert response.body() != null;
-                String responseBody = response.body().string();
-                System.out.println(responseBody);
-                Log.d("RESPONSE RECEIVED", responseBody);
-            }
-
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                System.out.println("FAILURE");
-                e.printStackTrace();
-            }
-        });
     }
 
     void showAddBowlDialog() {
@@ -180,10 +181,6 @@ public class UserActivity extends AppCompatActivity {
         dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         dialog.setContentView(R.layout.dialog_add_bowl);
 
-        //TODO: list with existent bowls names
-        // petName is unique
-        // or search in db if that petName already exists
-
         final EditText txtAddPetName = dialog.findViewById(R.id.edittext_dialog_add_pet_name);
         final EditText txtAddDailyGoal = dialog.findViewById(R.id.edittext_dialog_add_daily_goal);
         Button btnAdd = dialog.findViewById(R.id.button_dialog_add_bowl);
@@ -192,29 +189,60 @@ public class UserActivity extends AppCompatActivity {
             String petName = txtAddPetName.getText().toString();
             String dailyGoal = txtAddDailyGoal.getText().toString();
 
-            addCard(petName, dailyGoal);
+            //TODO: check if this works
+            if(petName.isBlank()) {
+                txtAddPetName.setError("Please insert a valid name");
+                txtAddPetName.requestFocus();
+            } else if(dailyGoal.isEmpty()) {
+                txtAddDailyGoal.setError("Please insert a valid number");
+                txtAddDailyGoal.requestFocus();
+            } else {
+                String error = "";
+                for (int i = 0; i < this.bowlsArray.length(); i++) {
+                    try {
+                        if(bowlsArray.getString(i).equals(petName)) error = "This name it's already in use";
+                        if(bowlsArray.getString(i).contains("undefined")) error = "Please insert a valid name: (undefined) is not valid!";
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
 
-            //TODO: send this info to database
-            //TODO: get bowl weight and 'reset' it
+                if(error.isEmpty()) {
+                    requests.postAddBowl(petName, dailyGoal);
+                    try {
+                        addCard(petName);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    dialog.dismiss();
+                } else {
+                    txtAddPetName.setError(error);
+                    txtAddPetName.requestFocus();
+                }
+            }
 
-            dialog.dismiss();
+            //TODO: make user wait time
+            requests.resetBowl(petName);
         });
 
         dialog.show();
     }
 
-    private void addCard(String petName, String dailyGoal) {
+    @SuppressLint("SetTextI18n")
+    private void addCard(String petName) throws InterruptedException {
         View cardView = getLayoutInflater().inflate(R.layout.card_bowl, null);
+        BlockingQueue<Integer> blockingQueue;
 
         TextView txtBowlName = cardView.findViewById(R.id.text_bowl_name);
         txtBowlName.setText(petName);
 
+        blockingQueue = requests.getFoodAmount(petName);
         TextView txtCurrentDosage = cardView.findViewById(R.id.text_bowl_current_dosage);
-        //TODO: get value from DB?
-        txtCurrentDosage.setText("0");
+        txtCurrentDosage.setText(blockingQueue.take().toString());
 
+        blockingQueue = requests.getDailyGoal(petName);
         TextView txtDailyGoal = cardView.findViewById(R.id.text_daily_goal);
-        txtDailyGoal.setText(dailyGoal);
+        txtDailyGoal.setText(blockingQueue.take().toString());
 
         Button btnSelect = cardView.findViewById(R.id.button_select_bowl);
 
