@@ -193,7 +193,7 @@ public class UserActivity extends AppCompatActivity {
                 String petName = txtAddPetName.getText().toString();
                 String dailyGoal = txtAddDailyGoal.getText().toString();
 
-                if(petName.isBlank()) {
+                if(petName.isBlank() || petName.toLowerCase().contains("undefined")) {
                     txtAddPetName.setError("Please insert a valid name");
                     txtAddPetName.requestFocus();
                 } else if(dailyGoal.isEmpty()) {
@@ -203,9 +203,8 @@ public class UserActivity extends AppCompatActivity {
                     String error = "";
                     for (int i = 0; i < this.bowlsArray.length(); i++) {
                         try {
-                            if(bowlsArray.getString(i).equals(petName)
-                               || bowlsArray.getString(i).toLowerCase().contains("undefined"))
-                               error = "The name " + petName + " it's not valid";
+                            if(bowlsArray.getString(i).equals(petName))
+                               error = "The name " + petName + " already exists";
                         } catch (JSONException e) {
                             throw new RuntimeException(e);
                         }
@@ -213,6 +212,9 @@ public class UserActivity extends AppCompatActivity {
 
                     if(error.isEmpty()) {
                         requests.postAddBowl(petName, dailyGoal);
+                        //TODO: make user wait time
+                        //TODO: check execution order
+                        requests.resetBowl(petName);
                         try {
                             addCard(petName);
                         } catch (InterruptedException e) {
@@ -224,9 +226,6 @@ public class UserActivity extends AppCompatActivity {
                         txtAddPetName.requestFocus();
                     }
                 }
-
-                //TODO: make user wait time
-                requests.resetBowl(petName);
             });
         } else {
             String warning = "There are no available bowls!";
