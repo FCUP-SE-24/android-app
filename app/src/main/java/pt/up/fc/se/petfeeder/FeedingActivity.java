@@ -29,6 +29,7 @@ public class FeedingActivity extends AppCompatActivity {
 
     TextView btnChangeDailyGoal;
     TextView txtBack;
+    TextView txtDosageWarning;
     Button btnFeed;
     Button btnResetBowl;
     ServerRequests requests;
@@ -48,8 +49,6 @@ public class FeedingActivity extends AppCompatActivity {
 
         requests = new ServerRequests();
 
-        BlockingQueue<Integer> blockingQueue;
-
         txtBack = findViewById(R.id.label_back);
         txtBack.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -62,18 +61,21 @@ public class FeedingActivity extends AppCompatActivity {
         TextView txtPetName = findViewById(R.id.text_pet_name);
         txtPetName.setText(bowlName);
 
-        blockingQueue = requests.getFoodAmount(bowlName);
         TextView txtCurrentDosage = findViewById(R.id.text_current_dosage);
-        try {
-            txtCurrentDosage.setText(blockingQueue.take().toString());
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-        blockingQueue = requests.getDailyGoal(bowlName);
         btnChangeDailyGoal = findViewById(R.id.text_update_goal_dialog);
+
         try {
-            btnChangeDailyGoal.setText(blockingQueue.take().toString());
+            int current = requests.getFoodAmount(bowlName).take();
+            int goal = requests.getDailyGoal(bowlName).take();
+
+            if(current >= goal * 0.75) {
+                txtDosageWarning = findViewById(R.id.text_dosage_warning);
+                txtDosageWarning.setVisibility(View.VISIBLE);
+            }
+            txtCurrentDosage.setText(String.valueOf(current));
+
+            btnChangeDailyGoal.setText(String.valueOf(goal));
+
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -103,7 +105,7 @@ public class FeedingActivity extends AppCompatActivity {
                         if (handler != null) return true;
                         requests.changeMotorState(bowlName, "on");
                         handler = new Handler();
-                        handler.postDelayed(action, 200);
+                        handler.postDelayed(action, 100);
                         break;
                     case MotionEvent.ACTION_UP:
                         if (handler == null) return true;
@@ -116,16 +118,32 @@ public class FeedingActivity extends AppCompatActivity {
             }
 
             final Runnable action = new Runnable() {
-                @Override public void run() {
-                    BlockingQueue<Integer> weightBlockingQueue = requests.getFoodPoured(bowlName);
-                    BlockingQueue<Integer> currentBlockingQueue = requests.getFoodAmount(bowlName);
+                final int goal;
+                final int current;
+
+                {
                     try {
-                        int weight = weightBlockingQueue.take();
-                        int current = currentBlockingQueue.take();
+                        goal = requests.getDailyGoal(bowlName).take();
+                        current = requests.getFoodAmount(bowlName).take();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                @Override public void run() {
+                    try {
+                        int weight = requests.getFoodPoured(bowlName).take();
                         int total = weight + current;
+
                         txtCurrentDosage.setText(Integer.toString(total));
                         requests.postLastFeedingTime(bowlName, LocalTime.now().format(DateTimeFormatter.ofPattern("H:m")));
                         txtLastFeeding.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("H:m")));
+
+                        if(total >= goal * 0.75) {
+                            txtDosageWarning = findViewById(R.id.text_dosage_warning);
+                            txtDosageWarning.setVisibility(View.VISIBLE);
+                        }
+
                         System.out.println(weight+current);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
