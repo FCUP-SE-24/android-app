@@ -66,7 +66,6 @@ public class UserActivity extends AppCompatActivity {
     FirebaseUser user;
     private FirebaseAuth.AuthStateListener authStateListener;
     ServerRequests requests;
-    int nAvailableBowls;
     JSONArray bowlsArray;
 
     @SuppressLint({"NonConstantResourceId", "RestrictedApi"})
@@ -79,8 +78,6 @@ public class UserActivity extends AppCompatActivity {
         firebaseAuth = FirebaseAuth.getInstance();
 
         requests = new ServerRequests();
-
-        nAvailableBowls = 0;
 
         user = firebaseAuth.getCurrentUser();
 
@@ -132,7 +129,11 @@ public class UserActivity extends AppCompatActivity {
         btnAddBowl.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                showAddBowlDialog();
+                try {
+                    showAddBowlDialog();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
 
@@ -140,17 +141,12 @@ public class UserActivity extends AppCompatActivity {
         try {
             bowlsArray = blockingQueue.take();
             for (int i = 0; i < bowlsArray.length(); i++) {
-                if(bowlsArray.getString(i).contains("undefined"))
-                    nAvailableBowls += 1;
-                else addCard(bowlsArray.getString(i));
+                if(!bowlsArray.getString(i).contains("undefined"))
+                    addCard(bowlsArray.getString(i));
             }
         } catch (InterruptedException | JSONException e) {
             throw new RuntimeException(e);
         }
-
-        //TODO: warning of how much bowls are free
-        // free bowls = arduinos without name
-        // if no more free bowls, disable button and warn
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -173,7 +169,7 @@ public class UserActivity extends AppCompatActivity {
         }
     }
 
-    void showAddBowlDialog() {
+    void showAddBowlDialog() throws InterruptedException {
         final Dialog dialog = new Dialog(UserActivity.this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setCancelable(true);
@@ -181,49 +177,64 @@ public class UserActivity extends AppCompatActivity {
         dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         dialog.setContentView(R.layout.dialog_add_bowl);
 
+        final TextView txtUndefinedBowls = dialog.findViewById(R.id.text_undefined_bowls);
         final EditText txtAddPetName = dialog.findViewById(R.id.edittext_dialog_add_pet_name);
         final EditText txtAddDailyGoal = dialog.findViewById(R.id.edittext_dialog_add_daily_goal);
         Button btnAdd = dialog.findViewById(R.id.button_dialog_add_bowl);
 
-        btnAdd.setOnClickListener((v) -> {
-            String petName = txtAddPetName.getText().toString();
-            String dailyGoal = txtAddDailyGoal.getText().toString();
+        BlockingQueue<Integer> undefinedBowlsBlockingQueue = requests.getUndefinedBowlsCount();
+        int count = undefinedBowlsBlockingQueue.take();
 
-            //TODO: check if this works
-            if(petName.isBlank()) {
-                txtAddPetName.setError("Please insert a valid name");
-                txtAddPetName.requestFocus();
-            } else if(dailyGoal.isEmpty()) {
-                txtAddDailyGoal.setError("Please insert a valid number");
-                txtAddDailyGoal.requestFocus();
-            } else {
-                String error = "";
-                for (int i = 0; i < this.bowlsArray.length(); i++) {
-                    try {
-                        if(bowlsArray.getString(i).equals(petName)) error = "This name it's already in use";
-                        if(bowlsArray.getString(i).contains("undefined")) error = "Please insert a valid name: (undefined) is not valid!";
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
+        if(count > 0) {
+            String warning = "There are " + count + " available bowls!";
+            txtUndefinedBowls.setText(warning);
 
-                if(error.isEmpty()) {
-                    requests.postAddBowl(petName, dailyGoal);
-                    try {
-                        addCard(petName);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                    dialog.dismiss();
-                } else {
-                    txtAddPetName.setError(error);
+            btnAdd.setOnClickListener((v) -> {
+                String petName = txtAddPetName.getText().toString();
+                String dailyGoal = txtAddDailyGoal.getText().toString();
+
+                //TODO: check if this works
+                if(petName.isBlank()) {
+                    txtAddPetName.setError("Please insert a valid name");
                     txtAddPetName.requestFocus();
-                }
-            }
+                } else if(dailyGoal.isEmpty()) {
+                    txtAddDailyGoal.setError("Please insert a valid number");
+                    txtAddDailyGoal.requestFocus();
+                } else {
+                    String error = "";
+                    for (int i = 0; i < this.bowlsArray.length(); i++) {
+                        try {
+                            if(bowlsArray.getString(i).equals(petName)) error = "This name it's already in use";
+                            if(bowlsArray.getString(i).contains("undefined")) error = "Please insert a valid name: (undefined) is not valid!";
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
 
-            //TODO: make user wait time
-            requests.resetBowl(petName);
-        });
+                    if(error.isEmpty()) {
+                        requests.postAddBowl(petName, dailyGoal);
+                        try {
+                            addCard(petName);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                        dialog.dismiss();
+                    } else {
+                        txtAddPetName.setError(error);
+                        txtAddPetName.requestFocus();
+                    }
+                }
+
+                //TODO: make user wait time
+                requests.resetBowl(petName);
+            });
+        } else {
+            String warning = "There are no available bowls!";
+            txtUndefinedBowls.setText(warning);
+            txtUndefinedBowls.setTextColor(getResources().getColor(com.google.android.material.R.color.design_default_color_error));
+            btnAdd.setAlpha(.5f);
+            btnAdd.setEnabled(false);
+        }
 
         dialog.show();
     }

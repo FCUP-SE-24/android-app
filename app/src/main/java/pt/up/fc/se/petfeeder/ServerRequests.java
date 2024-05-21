@@ -195,6 +195,37 @@ public class ServerRequests {
         return blockingQueue;
     }
 
+    public BlockingQueue<Integer> getUndefinedBowlsCount() {
+        String undefinedCountUrl = base_url + "/get_undefined_count";
+        Request request = new Request.Builder().url(undefinedCountUrl).build();
+
+        final BlockingQueue<Integer> blockingQueue = new ArrayBlockingQueue<>(1);
+
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                assert response.body() != null;
+                String responseString = response.body().string();
+                JSONObject responseBody = null;
+                try {
+                    responseBody = new JSONObject(responseString);
+                    int count = responseBody.getInt("count");
+                    blockingQueue.add(count);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+        return blockingQueue;
+    }
+
     // -- POSTS --
 
     public void postAddBowl(String bowlName, String dailyGoal) {
