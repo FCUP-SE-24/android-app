@@ -3,7 +3,6 @@ package pt.up.fc.se.petfeeder;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.MenuInflater;
@@ -24,36 +23,16 @@ import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
 
-import com.google.firebase.Firebase;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
-import org.w3c.dom.Text;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
-
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import pt.up.fc.se.petfeeder.databinding.ActivityMainBinding;
-import pt.up.fc.se.petfeeder.databinding.ActivityUserBinding;
 
 public class UserActivity extends AppCompatActivity {
 
@@ -94,46 +73,40 @@ public class UserActivity extends AppCompatActivity {
         menuInflater.inflate(R.menu.user_menu, menuBuilder);
         String userEmail = Objects.requireNonNull(user.getEmail()).substring(0, user.getEmail().indexOf("@"));
         menuBuilder.getItem(0).setTitle(userEmail);
-        menu_user_show.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                MenuPopupHelper menuPopupHelper = new MenuPopupHelper(UserActivity.this, menuBuilder, v);
-                menuPopupHelper.setForceShowIcon(true);
+        menu_user_show.setOnClickListener(v -> {
+            MenuPopupHelper menuPopupHelper = new MenuPopupHelper(UserActivity.this, menuBuilder, v);
+            menuPopupHelper.setForceShowIcon(true);
 
-                menuBuilder.getItem(0).setEnabled(false);
-                menuBuilder.setCallback(new MenuBuilder.Callback() {
-                    @Override
-                    public boolean onMenuItemSelected(@NonNull MenuBuilder menu, @NonNull MenuItem item) {
-                        if(item.getItemId() == R.id.menu_logout) {
-                            FirebaseAuth.getInstance().signOut();
-                            Intent I = new Intent(getApplicationContext(), MainActivity.class);
-                            startActivity(I);
-                            finish();
-                            return true;
-                        }
-                        return false;
+            menuBuilder.getItem(0).setEnabled(false);
+            menuBuilder.setCallback(new MenuBuilder.Callback() {
+                @Override
+                public boolean onMenuItemSelected(@NonNull MenuBuilder menu, @NonNull MenuItem item) {
+                    if(item.getItemId() == R.id.menu_logout) {
+                        FirebaseAuth.getInstance().signOut();
+                        Intent I = new Intent(getApplicationContext(), MainActivity.class);
+                        startActivity(I);
+                        finish();
+                        return true;
                     }
+                    return false;
+                }
 
-                    @Override
-                    public void onMenuModeChange(@NonNull MenuBuilder menu) {
-                        //empty
-                    }
-                });
-                menuPopupHelper.show();
-            }
+                @Override
+                public void onMenuModeChange(@NonNull MenuBuilder menu) {
+                    //empty
+                }
+            });
+            menuPopupHelper.show();
         });
 
         btnAddBowl = findViewById(R.id.button_add_bowl_dialog);
         layout = findViewById(R.id.layout_container);
 
-        btnAddBowl.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try {
-                    showAddBowlDialog();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
+        btnAddBowl.setOnClickListener(v -> {
+            try {
+                showAddBowlDialog();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         });
 
@@ -256,13 +229,10 @@ public class UserActivity extends AppCompatActivity {
 
         Button btnSelect = cardView.findViewById(R.id.button_select_bowl);
 
-        btnSelect.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent I = new Intent(UserActivity.this, FeedingActivity.class);
-                I.putExtra("bowlName", petName);
-                startActivity(I);
-            }
+        btnSelect.setOnClickListener(v -> {
+            Intent I = new Intent(UserActivity.this, FeedingActivity.class);
+            I.putExtra("bowlName", petName);
+            startActivity(I);
         });
 
         layout.addView(cardView);

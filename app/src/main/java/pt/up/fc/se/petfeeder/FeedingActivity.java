@@ -50,12 +50,9 @@ public class FeedingActivity extends AppCompatActivity {
         requests = new ServerRequests();
 
         txtBack = findViewById(R.id.label_back);
-        txtBack.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent I = new Intent(FeedingActivity.this, UserActivity.class);
-                startActivity(I);
-            }
+        txtBack.setOnClickListener(v -> {
+            Intent I = new Intent(FeedingActivity.this, UserActivity.class);
+            startActivity(I);
         });
 
         TextView txtPetName = findViewById(R.id.text_pet_name);
@@ -80,12 +77,7 @@ public class FeedingActivity extends AppCompatActivity {
             throw new RuntimeException(e);
         }
 
-        btnChangeDailyGoal.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showUpdateGoalDialog(bowlName);
-            }
-        });
+        btnChangeDailyGoal.setOnClickListener(v -> showUpdateGoalDialog(bowlName));
 
         BlockingQueue<String> feedingTimeBlockingQueue = requests.getLastFeedingTime(bowlName);
         TextView txtLastFeeding = findViewById(R.id.text_last_feeding_time);
@@ -105,7 +97,7 @@ public class FeedingActivity extends AppCompatActivity {
                         if (handler != null) return true;
                         requests.changeMotorState(bowlName, "on");
                         handler = new Handler();
-                        handler.postDelayed(action, 100);
+                        handler.postDelayed(action, 200);
                         break;
                     case MotionEvent.ACTION_UP:
                         if (handler == null) return true;
@@ -148,19 +140,13 @@ public class FeedingActivity extends AppCompatActivity {
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
-                    //TODO: post weight to db here?
                     handler.postDelayed(this, 200);
                 }
             };
         });
 
         btnResetBowl = findViewById(R.id.button_reset_bowl_dialog);
-        btnResetBowl.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showResetBowlDialog();
-            }
-        });
+        btnResetBowl.setOnClickListener(v -> showResetBowlDialog());
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
