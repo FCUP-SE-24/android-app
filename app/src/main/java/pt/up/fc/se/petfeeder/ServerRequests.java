@@ -1,8 +1,13 @@
 package pt.up.fc.se.petfeeder;
 
+import android.app.Activity;
+import android.content.Context;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.WorkerThread;
+import androidx.core.content.ContextCompat;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -42,7 +47,9 @@ public class ServerRequests {
                 JSONObject responseBody = null;
                 try {
                     responseBody = new JSONObject(responseString);
+                    System.out.println(responseBody);
                     JSONArray bowlsArray = responseBody.getJSONArray("bowls");
+                    System.out.println(bowlsArray);
                     blockingQueue.add(bowlsArray);
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
@@ -76,6 +83,7 @@ public class ServerRequests {
                 String responseString = response.body().string();
                 JSONObject responseBody = null;
                 try {
+                    System.out.println(responseBody);
                     responseBody = new JSONObject(responseString);
                     int foodAmount = responseBody.getInt("food_amount");
                     blockingQueue.add(foodAmount);
@@ -159,16 +167,25 @@ public class ServerRequests {
         return blockingQueue;
     }
 
+    // TODO: check if returns total weight or just bowl weight or amount of food poured
+    // TODO: right now it's use is to return the weight of food that is being poured while holding button "FEED"
     public BlockingQueue<Integer> getFoodPoured(String bowlName) {
-        HttpUrl.Builder urlBuilder = Objects.requireNonNull(HttpUrl.parse(base_url + "/get_weight")).newBuilder();
+        HttpUrl.Builder urlBuilder = Objects.requireNonNull(HttpUrl.parse(base_url + "/get_bowl_weight")).newBuilder();
         urlBuilder.addQueryParameter("bowl_name", bowlName);
-        String weightUrl = urlBuilder.build().toString();
-        Request request = new Request.Builder().url(weightUrl).build();
+        String foodPouredUrl = urlBuilder.build().toString();
+
+        Request request = new Request.Builder().url(foodPouredUrl).build();
 
         final BlockingQueue<Integer> blockingQueue = new ArrayBlockingQueue<>(1);
 
         Call call = client.newCall(request);
         call.enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                e.printStackTrace();
+                call.cancel();
+            }
+
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 assert response.body() != null;
@@ -176,16 +193,11 @@ public class ServerRequests {
                 JSONObject responseBody = null;
                 try {
                     responseBody = new JSONObject(responseString);
-                    int weight = responseBody.getInt("weight");
-                    blockingQueue.add(weight);
+                    int dailyGoal = responseBody.getInt("daily_goal");
+                    blockingQueue.add(dailyGoal);
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
-            }
-
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                e.printStackTrace();
             }
         });
 
@@ -216,7 +228,7 @@ public class ServerRequests {
 
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                e.printStackTrace();
+                call.cancel();
             }
         });
 
@@ -225,9 +237,10 @@ public class ServerRequests {
 
     // -- POSTS --
 
-    public void postAddBowl(String bowlName, String dailyGoal) {
+    public void postAddBowl(String bowlName, String dailyGoal, String userID) {
         String addBowlUrl = base_url + "/add_bowl";
         RequestBody formBody = new FormBody.Builder()
+                .add("user_id", userID)
                 .add("bowl_name", bowlName)
                 .add("daily_goal", dailyGoal)
                 .build();
@@ -249,13 +262,15 @@ public class ServerRequests {
         });
     }
 
-    public void postDailyGoal(String bowlName, String dailyGoal) {
+    public BlockingQueue<Integer> postDailyGoal(String bowlName, String dailyGoal) {
         String dailyGoalUrl = base_url + "/set_daily_goal";
         RequestBody formBody = new FormBody.Builder()
                 .add("bowl_name", bowlName)
                 .add("daily_goal", dailyGoal)
                 .build();
         Request request = new Request.Builder().url(dailyGoalUrl).post(formBody).build();
+
+        final BlockingQueue<Integer> blockingQueue = new ArrayBlockingQueue<>(1);
 
         Call call = client.newCall(request);
         call.enqueue(new Callback() {
@@ -268,9 +283,19 @@ public class ServerRequests {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 assert response.body() != null;
-                Log.d("TAG", response.body().string());
+                String responseString = response.body().string();
+                JSONObject responseBody = null;
+                try {
+                    responseBody = new JSONObject(responseString);
+                    int dailyGoal = responseBody.getInt("new_daily_goal");
+                    blockingQueue.add(dailyGoal);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
+
+        return blockingQueue;
     }
 
     public void postLastFeedingTime(String bowlName, String time) {

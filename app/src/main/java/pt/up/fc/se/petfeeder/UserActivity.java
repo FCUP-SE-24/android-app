@@ -2,8 +2,11 @@ package pt.up.fc.se.petfeeder;
 
 import android.annotation.SuppressLint;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -15,6 +18,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -102,24 +106,47 @@ public class UserActivity extends AppCompatActivity {
         btnAddBowl = findViewById(R.id.button_add_bowl_dialog);
         layout = findViewById(R.id.layout_container);
 
-        btnAddBowl.setOnClickListener(v -> {
+        if(isNetworkConnected()) {
+            btnAddBowl.setOnClickListener(v -> {
+                try {
+                    showAddBowlDialog();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            BlockingQueue<JSONArray> blockingQueue = requests.getBowlsList();
             try {
-                showAddBowlDialog();
-            } catch (InterruptedException e) {
+                bowlsArray = blockingQueue.take();
+                for (int i = 0; i < bowlsArray.length(); i++) {
+                    if(!bowlsArray.getString(i).contains("undefined")) {
+                        addCard(bowlsArray.getString(i));
+                    }
+                }
+            } catch (InterruptedException | JSONException e) {
                 throw new RuntimeException(e);
             }
-        });
-
-        BlockingQueue<JSONArray> blockingQueue = requests.getBowlsList();
-        try {
-            bowlsArray = blockingQueue.take();
-            for (int i = 0; i < bowlsArray.length(); i++) {
-                if(!bowlsArray.getString(i).contains("undefined"))
-                    addCard(bowlsArray.getString(i));
-            }
-        } catch (InterruptedException | JSONException e) {
-            throw new RuntimeException(e);
+        } else {
+            Toast.makeText(UserActivity.this, "Error connecting to network:\nUnable to fetch data", Toast.LENGTH_SHORT).show();
+            btnAddBowl.setOnClickListener(v -> {
+                Toast.makeText(UserActivity.this, "Error connecting to network:\nCannot add bowl", Toast.LENGTH_SHORT).show();
+            });
         }
+
+//        BlockingQueue<JSONArray> blockingQueue = requests.getBowlsList();
+//        System.out.println(blockingQueue);
+//        try {
+//            bowlsArray = blockingQueue.take();
+//            System.out.println(bowlsArray.length());
+//            for (int i = 0; i < bowlsArray.length(); i++) {
+//                if(!bowlsArray.getString(i).contains("undefined")) {
+//                    System.out.println("bowl " + bowlsArray.getString(i));
+//                    addCard(bowlsArray.getString(i));
+//                }
+//            }
+//        } catch (InterruptedException | JSONException e) {
+//            throw new RuntimeException(e);
+//        }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -166,7 +193,7 @@ public class UserActivity extends AppCompatActivity {
                 String petName = txtAddPetName.getText().toString();
                 String dailyGoal = txtAddDailyGoal.getText().toString();
 
-                if(petName.isBlank() || petName.toLowerCase().contains("undefined")) {
+                if(petName.isBlank() || petName.toLowerCase().contains("undefined") || petName.toLowerCase().contains("to_be_def")) {
                     txtAddPetName.setError("Please insert a valid name");
                     txtAddPetName.requestFocus();
                 } else if(dailyGoal.isEmpty()) {
@@ -184,7 +211,7 @@ public class UserActivity extends AppCompatActivity {
                     }
 
                     if(error.isEmpty()) {
-                        requests.postAddBowl(petName, dailyGoal);
+                        requests.postAddBowl(petName, dailyGoal, user.getUid());
                         //TODO: make user wait time
                         //TODO: check execution order
                         requests.resetBowl(petName);
@@ -236,5 +263,14 @@ public class UserActivity extends AppCompatActivity {
         });
 
         layout.addView(cardView);
+    }
+
+    private boolean isNetworkConnected() {
+        ConnectivityManager connManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo info = connManager.getActiveNetworkInfo();
+        if (info != null)
+            return info.isConnectedOrConnecting(); // WIFI connected
+        else
+            return false; // no info object implies no connectivity
     }
 }

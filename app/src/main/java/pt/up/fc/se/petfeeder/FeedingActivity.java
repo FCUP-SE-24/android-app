@@ -87,7 +87,11 @@ public class FeedingActivity extends AppCompatActivity {
             throw new RuntimeException(e);
         }
 
-        btnFeed = findViewById(R.id.button_feed);
+//        btnFeed = findViewById(R.id.button_feed);
+//        btnFeed.setOnClickListener(v -> {
+//            requests.postLastFeedingTime(bowlName, LocalTime.now().format(DateTimeFormatter.ofPattern("H:m")));
+//            txtLastFeeding.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("H:m")));
+//        });
         btnFeed.setOnTouchListener(new View.OnTouchListener() {
             private Handler handler;
 
@@ -97,7 +101,7 @@ public class FeedingActivity extends AppCompatActivity {
                         if (handler != null) return true;
                         requests.changeMotorState(bowlName, "on");
                         handler = new Handler();
-                        handler.postDelayed(action, 200);
+                        handler.postDelayed(action, 700);
                         break;
                     case MotionEvent.ACTION_UP:
                         if (handler == null) return true;
@@ -140,7 +144,7 @@ public class FeedingActivity extends AppCompatActivity {
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
-                    handler.postDelayed(this, 200);
+                    handler.postDelayed(this, 700);
                 }
             };
         });
@@ -182,7 +186,11 @@ public class FeedingActivity extends AppCompatActivity {
                 txtDailyGoal.setError("Please insert a valid number");
                 txtDailyGoal.requestFocus();
             } else {
-                requests.postDailyGoal(petName, dailyGoal);
+                try {
+                    btnChangeDailyGoal.setText(requests.postDailyGoal(petName, dailyGoal).take().toString());
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
                 dialog.dismiss();
             }
         });
