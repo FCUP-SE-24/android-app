@@ -133,21 +133,6 @@ public class UserActivity extends AppCompatActivity {
             });
         }
 
-//        BlockingQueue<JSONArray> blockingQueue = requests.getBowlsList();
-//        System.out.println(blockingQueue);
-//        try {
-//            bowlsArray = blockingQueue.take();
-//            System.out.println(bowlsArray.length());
-//            for (int i = 0; i < bowlsArray.length(); i++) {
-//                if(!bowlsArray.getString(i).contains("undefined")) {
-//                    System.out.println("bowl " + bowlsArray.getString(i));
-//                    addCard(bowlsArray.getString(i));
-//                }
-//            }
-//        } catch (InterruptedException | JSONException e) {
-//            throw new RuntimeException(e);
-//        }
-
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -158,7 +143,6 @@ public class UserActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-//        firebaseAuth.addAuthStateListener(authStateListener);
         firebaseAuth = FirebaseAuth.getInstance();
         user = firebaseAuth.getCurrentUser();
 
@@ -212,8 +196,6 @@ public class UserActivity extends AppCompatActivity {
 
                     if(error.isEmpty()) {
                         requests.postAddBowl(petName, dailyGoal, user.getUid());
-                        //TODO: make user wait time
-                        //TODO: check execution order
                         requests.resetBowl(petName);
                         try {
                             addCard(petName);
@@ -247,18 +229,24 @@ public class UserActivity extends AppCompatActivity {
         txtBowlName.setText(petName);
 
         blockingQueue = requests.getFoodAmount(petName);
+        String foodAmount = blockingQueue.take().toString();
         TextView txtCurrentDosage = cardView.findViewById(R.id.text_bowl_current_dosage);
-        txtCurrentDosage.setText(blockingQueue.take().toString());
+        txtCurrentDosage.setText(foodAmount);
 
         blockingQueue = requests.getDailyGoal(petName);
+        String dailyGoal = blockingQueue.take().toString();
         TextView txtDailyGoal = cardView.findViewById(R.id.text_daily_goal);
-        txtDailyGoal.setText(blockingQueue.take().toString());
+        txtDailyGoal.setText(dailyGoal);
 
         Button btnSelect = cardView.findViewById(R.id.button_select_bowl);
 
         btnSelect.setOnClickListener(v -> {
             Intent I = new Intent(UserActivity.this, FeedingActivity.class);
-            I.putExtra("bowlName", petName);
+            Bundle extras = new Bundle();
+            extras.putString("bowlName", petName);
+            extras.putString("daily_goal", dailyGoal);
+            extras.putString("food_amount", foodAmount);
+            I.putExtras(extras);
             startActivity(I);
         });
 

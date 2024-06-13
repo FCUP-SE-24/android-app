@@ -1,13 +1,8 @@
 package pt.up.fc.se.petfeeder;
 
-import android.app.Activity;
-import android.content.Context;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.WorkerThread;
-import androidx.core.content.ContextCompat;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -42,23 +37,35 @@ public class ServerRequests {
         call.enqueue(new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                assert response.body() != null;
-                String responseString = response.body().string();
-                JSONObject responseBody = null;
                 try {
+                    if (!response.isSuccessful()) {
+                        // Handle unsuccessful response
+                        blockingQueue.add(new JSONArray());
+                        return;
+                    }
+
+                    assert response.body() != null;
+                    String responseString = response.body().string();
+                    JSONObject responseBody = null;
+
                     responseBody = new JSONObject(responseString);
-                    System.out.println(responseBody);
                     JSONArray bowlsArray = responseBody.getJSONArray("bowls");
-                    System.out.println(bowlsArray);
                     blockingQueue.add(bowlsArray);
                 } catch (JSONException e) {
-                    throw new RuntimeException(e);
+                    e.printStackTrace();
+                    blockingQueue.add(new JSONArray());  // return an empty JSON array or handle as needed
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 e.printStackTrace();
+                // Handle the failure by adding a default or error value to the queue
+                try {
+                    blockingQueue.put(new JSONArray());  // return an empty JSON array or handle as needed
+                } catch (InterruptedException interruptedException) {
+                    Thread.currentThread().interrupt();
+                }
             }
         });
 
@@ -83,7 +90,6 @@ public class ServerRequests {
                 String responseString = response.body().string();
                 JSONObject responseBody = null;
                 try {
-                    System.out.println(responseBody);
                     responseBody = new JSONObject(responseString);
                     int foodAmount = responseBody.getInt("food_amount");
                     blockingQueue.add(foodAmount);
@@ -167,8 +173,6 @@ public class ServerRequests {
         return blockingQueue;
     }
 
-    // TODO: check if returns total weight or just bowl weight or amount of food poured
-    // TODO: right now it's use is to return the weight of food that is being poured while holding button "FEED"
     public BlockingQueue<Integer> getFoodPoured(String bowlName) {
         HttpUrl.Builder urlBuilder = Objects.requireNonNull(HttpUrl.parse(base_url + "/get_bowl_weight")).newBuilder();
         urlBuilder.addQueryParameter("bowl_name", bowlName);
@@ -193,8 +197,8 @@ public class ServerRequests {
                 JSONObject responseBody = null;
                 try {
                     responseBody = new JSONObject(responseString);
-                    int dailyGoal = responseBody.getInt("daily_goal");
-                    blockingQueue.add(dailyGoal);
+                    int bowlWeight = responseBody.getInt("bowl_weight");
+                    blockingQueue.add(bowlWeight);
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
